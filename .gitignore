@@ -2,3 +2,5 @@ mydata/*
 temp/*
 output/*
 mytemplates/*
+__pycache__/*
+db.sqlite3
