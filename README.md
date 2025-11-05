@@ -1,33 +1,56 @@
 # CVBuilder
-Build a CV from YAML data files.
 
-## Terminal Instructions (Linux or Windows Subsystem for Linux)
-1. Verify that the shell scripts in `scripts` are executable. 
-1. Verify that the shell scripts do not have Windows line endings. Use `dos2unix` to convert these files if needed.
-1. Install perl, pandoc, and tth as necessary.
-1. Store your personal data (yml files) in a `mydata` folder.
-1. If you need to make minor modifications to existing templates to suit your needs, consider storing and editing copies in a `mytemplates` directory. You can then reference your custom template in the command that creates the CV file. 
-1. If you need to make a completely new and generalizable template, consider saving and committing this .tex file in the `templates` folder.
-1. Run the appropriate shell script and template
+## Quick Start for Development
 
-`./scripts/<your_shell_script.sh> <template_dir>/<your_template.tex> <your_cv_name>`
+### Prerequisites
 
-See optional arguments for output and data directory at the top of the .sh scripts.
+- Python 3.13+
+- [Poetry](https://python-poetry.org/docs/#installing-with-the-official-installer)
 
+### Setup & Run
 
+```bash
+# Navigate to backend
+cd backend
 
-## ALPHA Functionality
+# Install dependencies
+poetry install
 
-Very preliminary and untested functionality has been
-added to import and export refs.yml files to an 
-SQLite database and for a front end to view and add
-references (including from a DOI). 
+# Run migrations
+poetry run python manage.py migrate
 
-To create an SQLite database from your yaml run:
-`./sql_db/src/refs_yaml_to_sql.py`
+# Create admin user
+poetry run python manage.py createsuperuser
 
-To export these to `refs_exported.yml` run:
-`./sql_db/src/refs_sql_to_yaml.py`
+# Start development server
+poetry run python manage.py runserver
+```
 
-And for a simple web interface to edit the SQLite version run:
-`./sql_db/src/app.py`
+Access the application at http://127.0.0.1:8000/
+
+### Common Commands
+
+```bash
+# Add new dependencies
+poetry add <package-name>
+
+# Run migrations after model changes
+poetry run python manage.py makemigrations
+poetry run python manage.py migrate
+
+# Run tests
+poetry run python manage.py test
+```
+
+## Project Structure
+
+- `backend/` - Django application
+  - `accounts/` - User authentication
+  - `cv/` - CV management
+  - `templates_engine/` - Template system
+  - `importers/` - Data import
+  - `exports/` - Export functionality
+
+## License
+
+See [LICENSE](LICENSE) file for details.
