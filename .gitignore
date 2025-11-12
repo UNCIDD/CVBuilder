@@ -1,4 +1,4 @@
-legacy-scripts/mydata/*
+**/legacy-scripts/mydata/*
 temp/*
 output/*
 mytemplates/*
