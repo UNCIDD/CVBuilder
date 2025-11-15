@@ -37,12 +37,23 @@ class Publication(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='publications')
     doi = models.CharField(max_length=200)
     citation = models.TextField(blank=True)
+    title = models.CharField(max_length=500, blank=True)
+    authors = models.TextField(blank=True, help_text="Comma-separated list of authors")
+    journal = models.CharField(max_length=300, blank=True)
+    year = models.IntegerField(null=True, blank=True)
+    volume = models.CharField(max_length=50, blank=True)
+    issue = models.CharField(max_length=50, blank=True)
+    pages = models.CharField(max_length=50, blank=True)
 
     def __str__(self):
-        return self.doi
+        return self.title if self.title else self.doi
 
     class Meta:
         ordering = ['-id']
+        indexes = [
+            models.Index(fields=['title']),
+            models.Index(fields=['doi']),
+        ]
 
 
 class Award(models.Model):
