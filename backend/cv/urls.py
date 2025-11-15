@@ -4,7 +4,8 @@ from .views import (
     EducationViewSet,
     ProfessionalExperienceViewSet,
     PublicationViewSet,
-    AwardViewSet
+    AwardViewSet,
+    generate_biosketch
 )
 
 router = DefaultRouter()
@@ -15,5 +16,6 @@ router.register(r'awards', AwardViewSet, basename='award')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('biosketch/', generate_biosketch, name='generate-biosketch'),
 ]
 

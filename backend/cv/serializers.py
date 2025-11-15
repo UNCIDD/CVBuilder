@@ -33,3 +33,16 @@ class AwardSerializer(serializers.ModelSerializer):
         model = Award
         fields = '__all__'
 
+
+class BiosketchRequestSerializer(serializers.Serializer):
+    publication_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        min_length=5,
+        max_length=5,
+        help_text="List of exactly 5 publication IDs"
+    )
+    summary = serializers.CharField(
+        required=True,
+        help_text="Personal summary/biographical statement"
+    )
+
