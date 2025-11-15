@@ -35,11 +35,17 @@ class AwardSerializer(serializers.ModelSerializer):
 
 
 class BiosketchRequestSerializer(serializers.Serializer):
-    publication_ids = serializers.ListField(
+    related_publication_ids = serializers.ListField(
         child=serializers.IntegerField(),
         min_length=5,
         max_length=5,
-        help_text="List of exactly 5 publication IDs"
+        help_text="List of exactly 5 publication IDs for 'Five most closely related to research'"
+    )
+    other_publication_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        min_length=5,
+        max_length=5,
+        help_text="List of exactly 5 publication IDs for 'Five other significant publications'"
     )
     summary = serializers.CharField(
         required=True,

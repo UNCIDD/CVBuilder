@@ -39,15 +39,98 @@ class ProfessionalExperienceViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
+def fetch_doi_metadata(doi):
+    """Fetch publication metadata from Crossref API using DOI"""
+    try:
+        url = f"https://api.crossref.org/works/{doi}"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            message = data.get('message', {})
+
+            title = message.get('title', [''])[0] if message.get('title') else ''
+
+            authors_list = message.get('author', [])
+            authors = ', '.join([
+                f"{author.get('given', '')} {author.get('family', '')}".strip()
+                for author in authors_list
+            ])
+
+            journal = message.get('container-title', [''])[0] if message.get('container-title') else ''
+
+            year = None
+            published_date = message.get('published-print') or message.get('published-online')
+            if published_date and published_date.get('date-parts'):
+                year = published_date['date-parts'][0][0] if published_date['date-parts'][0] else None
+
+            volume = message.get('volume', '')
+            issue = message.get('issue', '')
+            pages = message.get('page', '')
+
+            citation_url = f"https://citation.doi.org/format"
+            citation_params = {'doi': doi, 'style': 'apa', 'lang': 'en-US'}
+            citation_response = requests.get(citation_url, params=citation_params, timeout=10)
+            citation = citation_response.text.strip() if citation_response.status_code == 200 else ''
+
+            return {
+                'title': title,
+                'authors': authors,
+                'journal': journal,
+                'year': year,
+                'volume': volume,
+                'issue': issue,
+                'pages': pages,
+                'citation': citation
+            }
+        return None
+    except Exception as e:
+        return None
+
+
 class PublicationViewSet(viewsets.ModelViewSet):
     serializer_class = PublicationSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Publication.objects.filter(user=self.request.user)
+        queryset = Publication.objects.filter(user=self.request.user)
+
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(title__icontains=search)
+
+        return queryset.order_by('-id')
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        publication = serializer.save(user=self.request.user)
+        if publication.doi:
+            metadata = fetch_doi_metadata(publication.doi)
+            if metadata:
+                publication.title = metadata.get('title', '')
+                publication.authors = metadata.get('authors', '')
+                publication.journal = metadata.get('journal', '')
+                publication.year = metadata.get('year')
+                publication.volume = metadata.get('volume', '')
+                publication.issue = metadata.get('issue', '')
+                publication.pages = metadata.get('pages', '')
+                if metadata.get('citation') and not publication.citation:
+                    publication.citation = metadata.get('citation', '')
+                publication.save()
+
+    def perform_update(self, serializer):
+        publication = serializer.save()
+        if publication.doi and not publication.title:
+            metadata = fetch_doi_metadata(publication.doi)
+            if metadata:
+                publication.title = metadata.get('title', '')
+                publication.authors = metadata.get('authors', '')
+                publication.journal = metadata.get('journal', '')
+                publication.year = metadata.get('year')
+                publication.volume = metadata.get('volume', '')
+                publication.issue = metadata.get('issue', '')
+                publication.pages = metadata.get('pages', '')
+                if metadata.get('citation') and not publication.citation:
+                    publication.citation = metadata.get('citation', '')
+                publication.save()
 
 
 class AwardViewSet(viewsets.ModelViewSet):
@@ -90,27 +173,43 @@ def generate_biosketch(request):
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    publication_ids = serializer.validated_data['publication_ids']
+    related_ids = serializer.validated_data['related_publication_ids']
+    other_ids = serializer.validated_data['other_publication_ids']
     summary = serializer.validated_data['summary']
 
-    publications_queryset = Publication.objects.filter(
-        id__in=publication_ids,
+    related_queryset = Publication.objects.filter(
+        id__in=related_ids,
         user=request.user
     )
-
-    if publications_queryset.count() != 5:
+    if related_queryset.count() != 5:
         return Response(
-            {"error": "Must provide exactly 5 valid publication IDs that belong to you"},
+            {"error": "Must provide exactly 5 valid related publication IDs that belong to you"},
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    publications_dict = {pub.id: pub for pub in publications_queryset}
-    publications = [publications_dict[pub_id] for pub_id in publication_ids]
+    other_queryset = Publication.objects.filter(
+        id__in=other_ids,
+        user=request.user
+    )
+    if other_queryset.count() != 5:
+        return Response(
+            {"error": "Must provide exactly 5 valid other publication IDs that belong to you"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    related_dict = {pub.id: pub for pub in related_queryset}
+    related_publications = [related_dict[pub_id] for pub_id in related_ids]
+
+    other_dict = {pub.id: pub for pub in other_queryset}
+    other_publications = [other_dict[pub_id] for pub_id in other_ids]
+
     educations = Education.objects.filter(user=request.user).order_by('-grad_year')
     experiences = ProfessionalExperience.objects.filter(user=request.user).order_by('-start_year')
+
     try:
         pdf_content = generate_biosketch_pdf(
-            publications=list(publications),
+            related_publications=list(related_publications),
+            other_publications=list(other_publications),
             educations=list(educations),
             experiences=list(experiences),
             summary=summary,
@@ -142,24 +241,7 @@ def generate_biosketch(request):
         )
 
 
-def fetch_doi_citation(doi):
-    try:
-        url = f"https://citation.doi.org/format"
-        params = {
-            'doi': doi,
-            'style': 'apa',
-            'lang': 'en-US'
-        }
-        response = requests.get(url, params=params, timeout=10)
-        if response.status_code == 200:
-            return response.text.strip()
-        else:
-            return None
-    except Exception:
-        return None
-
-
-def generate_biosketch_pdf(publications, educations, experiences, summary, user):
+def generate_biosketch_pdf(related_publications, other_publications, educations, experiences, summary, user):
     template_path = Path(__file__).parent / 'templates' / 'nih_biosketch.tex'
     with open(template_path, 'r', encoding='utf-8') as f:
         template = f.read()
@@ -188,16 +270,19 @@ def generate_biosketch_pdf(publications, educations, experiences, summary, user)
         appointments_text += f"{title} \\quad {institution} \\quad {years}\n\n"
     template = template.replace('{{APPOINTMENTS}}', appointments_text)
 
-    publications_text = ""
-    for i, pub in enumerate(publications, 1):
-        citation = fetch_doi_citation(pub.doi)
-        if not citation:
-            citation = pub.citation if pub.citation else f"DOI: {pub.doi}"
-
+    related_publications_text = ""
+    for i, pub in enumerate(related_publications, 1):
+        citation = pub.citation if pub.citation else f"DOI: {pub.doi}"
         citation_escaped = escape_latex(citation)
-        publications_text += f"{i}. {citation_escaped}\n\n"
+        related_publications_text += f"{i}. {citation_escaped}\n\n"
+    template = template.replace('{{RELATED_PUBLICATIONS}}', related_publications_text)
 
-    latex_content = template.replace('{{PUBLICATIONS}}', publications_text)
+    other_publications_text = ""
+    for i, pub in enumerate(other_publications, 1):
+        citation = pub.citation if pub.citation else f"DOI: {pub.doi}"
+        citation_escaped = escape_latex(citation)
+        other_publications_text += f"{i}. {citation_escaped}\n\n"
+    latex_content = template.replace('{{OTHER_PUBLICATIONS}}', other_publications_text)
 
     with tempfile.TemporaryDirectory() as temp_dir:
         tex_file = Path(temp_dir) / 'biosketch.tex'
