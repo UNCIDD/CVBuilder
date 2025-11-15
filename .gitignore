@@ -4,3 +4,4 @@ output/*
 mytemplates/*
 **/__pycache__/
 db.sqlite3
+package-lock.json
