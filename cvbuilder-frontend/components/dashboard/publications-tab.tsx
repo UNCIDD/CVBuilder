@@ -1,45 +1,46 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Trash2, Plus, Search } from 'lucide-react'
+import { apiRequest } from '@/lib/api'
 
-const dummyPublications = [
-  {
-    id: 1,
-    doi: "10.1038/nature.2024.15234",
-    citation: "Smith J, et al. Novel approach to protein folding. Nature. 2024;589(1):45-52.",
-  },
-  {
-    id: 2,
-    doi: "10.1126/science.abo1234",
-    citation: "Johnson M, et al. Machine learning for drug discovery. Science. 2023;380(2):102-108.",
-  },
-  {
-    id: 3,
-    doi: "10.1016/j.cell.2023.12.001",
-    citation: "Lee K, et al. Systems biology approaches. Cell. 2023;186(5):1200-1215.",
-  },
-  {
-    id: 4,
-    doi: "10.1073/pnas.2310234120",
-    citation: "Wang X, et al. CRISPR applications in therapeutics. PNAS. 2023;120(8):456-462.",
-  },
-]
+interface Publication {
+  id: number;
+  doi: string;
+  citation: string;
+}
 
 export function PublicationsTab() {
-  const [publications, setPublications] = useState(dummyPublications)
+  const [publications, setPublications] = useState<Publication[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [openAdd, setOpenAdd] = useState(false)
   const [newDoi, setNewDoi] = useState("")
   const [newCitation, setNewCitation] = useState("")
 
+  useEffect(() => {
+    fetchPublications()
+  }, [])
+
+  const fetchPublications = async () => {
+    try {
+      setIsLoading(true)
+      const data = await apiRequest<Publication[]>('/api/cv/publications/')
+      setPublications(data)
+    } catch (err) {
+      console.error('Failed to fetch publications:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const filtered = publications.filter((p) =>
     p.doi.toLowerCase().includes(search.toLowerCase()) ||
-    p.citation.toLowerCase().includes(search.toLowerCase())
+    (p.citation && p.citation.toLowerCase().includes(search.toLowerCase()))
   )
 
   const handleAdd = () => {
@@ -116,7 +117,11 @@ export function PublicationsTab() {
         </Dialog>
       </div>
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="text-center py-12">
+          <p className="text-slate-500">Loading publications...</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-slate-500">No publications found</p>
         </div>

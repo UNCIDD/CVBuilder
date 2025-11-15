@@ -1,38 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Trash2, Plus, Search } from 'lucide-react'
+import { apiRequest } from '@/lib/api'
 
-const dummyExperience = [
-  {
-    id: 1,
-    title: "Principal Investigator",
-    institution: "University of California, San Francisco",
-    startYear: 2019,
-    endYear: null,
-  },
-  {
-    id: 2,
-    title: "Postdoctoral Fellow",
-    institution: "Johns Hopkins University",
-    startYear: 2015,
-    endYear: 2019,
-  },
-  {
-    id: 3,
-    title: "Research Scientist",
-    institution: "National Institutes of Health",
-    startYear: 2012,
-    endYear: 2015,
-  },
-]
+interface ProfessionalExperience {
+  id: number;
+  title: string;
+  institution: string;
+  start_year: number;
+  end_year: number | null;
+}
 
 export function ExperienceTab() {
-  const [experience, setExperience] = useState(dummyExperience)
+  const [experience, setExperience] = useState<ProfessionalExperience[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [openAdd, setOpenAdd] = useState(false)
   const [newEntry, setNewEntry] = useState({
@@ -41,6 +27,22 @@ export function ExperienceTab() {
     startYear: new Date().getFullYear(),
     endYear: null as number | null,
   })
+
+  useEffect(() => {
+    fetchExperience()
+  }, [])
+
+  const fetchExperience = async () => {
+    try {
+      setIsLoading(true)
+      const data = await apiRequest<ProfessionalExperience[]>('/api/cv/professional-experience/')
+      setExperience(data)
+    } catch (err) {
+      console.error('Failed to fetch experience:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const filtered = experience.filter((e) =>
     e.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -149,7 +151,11 @@ export function ExperienceTab() {
         </Dialog>
       </div>
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="text-center py-12">
+          <p className="text-slate-500">Loading experience...</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-slate-500">No experience found</p>
         </div>
@@ -162,7 +168,7 @@ export function ExperienceTab() {
                   <h3 className="font-semibold text-slate-900">{exp.title}</h3>
                   <p className="text-sm text-slate-600 mt-1">{exp.institution}</p>
                   <p className="text-xs text-slate-500 mt-2">
-                    {exp.startYear}–{exp.endYear ? exp.endYear : "Present"}
+                    {exp.start_year}–{exp.end_year ? exp.end_year : "Present"}
                   </p>
                 </div>
                 <Button

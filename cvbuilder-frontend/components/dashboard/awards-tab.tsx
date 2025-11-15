@@ -1,38 +1,44 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Trash2, Plus, Search } from 'lucide-react'
+import { apiRequest } from '@/lib/api'
 
-const dummyAwards = [
-  {
-    id: 1,
-    name: "NIH Early Independence Award",
-    year: 2020,
-  },
-  {
-    id: 2,
-    name: "NSF CAREER Award",
-    year: 2019,
-  },
-  {
-    id: 3,
-    name: "Searle Scholars Program",
-    year: 2018,
-  },
-]
+interface Award {
+  id: number;
+  name: string;
+  year: number;
+}
 
 export function AwardsTab() {
-  const [awards, setAwards] = useState(dummyAwards)
+  const [awards, setAwards] = useState<Award[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [openAdd, setOpenAdd] = useState(false)
   const [newEntry, setNewEntry] = useState({
     name: "",
     year: new Date().getFullYear(),
   })
+
+  useEffect(() => {
+    fetchAwards()
+  }, [])
+
+  const fetchAwards = async () => {
+    try {
+      setIsLoading(true)
+      const data = await apiRequest<Award[]>('/api/cv/awards/')
+      setAwards(data)
+    } catch (err) {
+      console.error('Failed to fetch awards:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const filtered = awards.filter((a) =>
     a.name.toLowerCase().includes(search.toLowerCase())
@@ -112,7 +118,11 @@ export function AwardsTab() {
         </Dialog>
       </div>
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="text-center py-12">
+          <p className="text-slate-500">Loading awards...</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-slate-500">No awards found</p>
         </div>
