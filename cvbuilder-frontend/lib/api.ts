@@ -93,7 +93,24 @@ export async function login(username: string, password: string): Promise<{ token
 
   return response;
 }
+/**
+ * Register a new user and get auth token
+ */
+export async function register(email: string, password: string): Promise<{ token: string; user_id: number }> {
+  const response = await apiRequest<{ token: string; user_id: number }>(
+    '/api/accounts/register/',
+    {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }
+  );
 
+  if (response.token) {
+    setAuthToken(response.token);
+  }
+
+  return response;
+}
 /**
  * Logout (remove token)
  */

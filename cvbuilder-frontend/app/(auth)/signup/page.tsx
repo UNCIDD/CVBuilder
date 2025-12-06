@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { register } from '@/lib/api';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -31,11 +32,14 @@ export default function SignupPage() {
 
     setIsLoading(true);
     
-    // Simulate signup - in production, this would call your auth API
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setIsLoading(false);
-    router.push('/');
+    try {
+      await register(email, password);
+      router.push('/');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed');
+    } finally {
+      setIsLoading(false)
+    }
   };
 
   return (
