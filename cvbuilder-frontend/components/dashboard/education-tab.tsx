@@ -46,37 +46,57 @@ export function EducationTab() {
     }
   }
 
-  const filtered = education.filter((e) =>
-    e.school_name.toLowerCase().includes(search.toLowerCase()) ||
-    e.field_of_study.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = education.filter((e) => {
+    if (!search) return true
+    const searchLower = search.toLowerCase()
+    return (
+      (e.school_name?.toLowerCase().includes(searchLower) ?? false) ||
+      (e.field_of_study?.toLowerCase().includes(searchLower) ?? false)
+    )
+  })
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (
       newEntry.schoolName.trim() &&
       newEntry.fieldOfStudy.trim() &&
       newEntry.degreeType.trim()
     ) {
-      setEducation([
-        ...education,
-        {
-          id: Math.max(...education.map((e) => e.id), 0) + 1,
-          ...newEntry,
-        },
-      ])
-      setNewEntry({
-        schoolName: "",
-        location: "",
-        gradYear: new Date().getFullYear(),
-        degreeType: "",
-        fieldOfStudy: "",
-      })
-      setOpenAdd(false)
+      try {
+        const data = {
+          school_name: newEntry.schoolName,
+          location: newEntry.location,
+          grad_year: newEntry.gradYear,
+          degree_type: newEntry.degreeType,
+          field_of_study: newEntry.fieldOfStudy,
+        }
+        await apiRequest('/api/cv/education/', {
+          method: 'POST',
+          body: JSON.stringify(data),
+        })
+        await fetchEducation()
+        setNewEntry({
+          schoolName: "",
+          location: "",
+          gradYear: new Date().getFullYear(),
+          degreeType: "",
+          fieldOfStudy: "",
+        })
+        setOpenAdd(false)
+      } catch (err) {
+        console.error('Failed to add education:', err)
+      }
     }
   }
 
-  const handleDelete = (id: number) => {
-    setEducation(education.filter((e) => e.id !== id))
+  const handleDelete = async (id: number) => {
+    try {
+      await apiRequest(`/api/cv/education/${id}/`, {
+        method: 'DELETE',
+      })
+      await fetchEducation()
+    } catch (err) {
+      console.error('Failed to delete education:', err)
+    }
   }
 
   return (
@@ -176,11 +196,19 @@ export function EducationTab() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-baseline gap-2">
-                    <h3 className="font-semibold text-slate-900">{edu.degree_type} in {edu.field_of_study}</h3>
-                    <span className="text-sm text-slate-500">({edu.grad_year})</span>
+                    <h3 className="font-semibold text-slate-900">
+                      {edu.degree_type || 'Degree'} {edu.field_of_study ? `in ${edu.field_of_study}` : ''}
+                    </h3>
+                    {edu.grad_year && (
+                      <span className="text-sm text-slate-500">({edu.grad_year})</span>
+                    )}
                   </div>
-                  <p className="text-sm text-slate-600 mt-1">{edu.school_name}</p>
-                  <p className="text-xs text-slate-500 mt-1">{edu.location}</p>
+                  {edu.school_name && (
+                    <p className="text-sm text-slate-600 mt-1">{edu.school_name}</p>
+                  )}
+                  {edu.location && (
+                    <p className="text-xs text-slate-500 mt-1">{edu.location}</p>
+                  )}
                 </div>
                 <Button
                   size="sm"

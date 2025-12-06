@@ -40,29 +40,45 @@ export function AwardsTab() {
     }
   }
 
-  const filtered = awards.filter((a) =>
-    a.name.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = awards.filter((a) => {
+    if (!search) return true
+    const searchLower = search.toLowerCase()
+    return a.name?.toLowerCase().includes(searchLower) ?? false
+  })
 
-  const handleAdd = () => {
-    if (newEntry.name.trim()) {
-      setAwards([
-        ...awards,
-        {
-          id: Math.max(...awards.map((a) => a.id), 0) + 1,
-          ...newEntry,
-        },
-      ])
+  const handleAdd = async () => {
+    if (!newEntry.name.trim()) return
+
+    try {
+      const data = {
+        name: newEntry.name.trim(),
+        year: newEntry.year,
+      }
+      await apiRequest('/api/cv/awards/', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+      await fetchAwards()
       setNewEntry({
         name: "",
         year: new Date().getFullYear(),
       })
       setOpenAdd(false)
+    } catch (err) {
+      console.error('Failed to add award:', err)
+      alert('Failed to add award. Please try again.')
     }
   }
 
-  const handleDelete = (id: number) => {
-    setAwards(awards.filter((a) => a.id !== id))
+  const handleDelete = async (id: number) => {
+    try {
+      await apiRequest(`/api/cv/awards/${id}/`, {
+        method: 'DELETE',
+      })
+      await fetchAwards()
+    } catch (err) {
+      console.error('Failed to delete award:', err)
+    }
   }
 
   return (
