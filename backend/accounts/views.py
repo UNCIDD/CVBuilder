@@ -43,21 +43,17 @@ def login(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register(request):
-    email = request.data.get('email')
+    username = request.data.get('username')
     password = request.data.get('password')
-    
-    if not email or not password:
-        return Response({'error': 'Email and password required'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    if User.objects.filter(email=email).exists():
-        return Response({'error': 'Email already registered'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Use email as username (or generate one)
-    username = email.split('@')[0]
+
+    if not username or not password:
+        return Response({'error': 'Username and password required'}, status=status.HTTP_400_BAD_REQUEST)
+
     if User.objects.filter(username=username).exists():
-        username = email  # fallback to full email
-    
-    user = User.objects.create_user(username=username, email=email, password=password)
+        return Response({'error': 'Username already exists'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Create user with username (email can be empty or same as username)
+    user = User.objects.create_user(username=username, email='', password=password)
     token, _ = Token.objects.get_or_create(user=user)
-    
+
     return Response({'token': token.key, 'user_id': user.id}, status=status.HTTP_201_CREATED)
