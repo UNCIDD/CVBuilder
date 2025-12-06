@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { register } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -15,6 +16,7 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const { refreshAuth } = useAuth();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +36,7 @@ export default function SignupPage() {
     
     try {
       await register(email, password);
+      await refreshAuth();
       router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');

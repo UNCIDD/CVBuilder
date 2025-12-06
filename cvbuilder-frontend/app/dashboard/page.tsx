@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { PublicationsTab } from "@/components/dashboard/publications-tab"
@@ -10,9 +10,27 @@ import { AwardsTab } from "@/components/dashboard/awards-tab"
 import { BiosketchesTab } from "@/components/dashboard/biosketches-tab"
 import Link from "next/link"
 import { Plus } from 'lucide-react'
+import { useAuth } from "@/lib/auth-context"
+import { useRouter } from "next/navigation"
 
 export default function DashboardPage() {
+  const { isAuthenticated, isLoading, logout } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("biosketches")
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -24,6 +42,9 @@ export default function DashboardPage() {
             <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Home
             </Link>
+            <Button variant="ghost" size="sm" onClick={logout}>
+              Sign Out
+            </Button>
           </div>
         </div>
       </div>

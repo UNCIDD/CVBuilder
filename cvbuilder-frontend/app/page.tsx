@@ -3,20 +3,34 @@
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { FileText, Settings, LogOut } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
 
 export default function Home() {
+  const { isAuthenticated, isLoading, logout } = useAuth();
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <main className="min-h-screen bg-background">
       {/* Navigation */}
       <div className="border-b border-border/40 bg-card">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold text-foreground">Biosketch</h1>
-          <Link href="/login">
-            <Button variant="outline" size="sm" className="gap-2">
+          {isLoading ? null : isAuthenticated ? (
+            <Button variant="outline" size="sm" className="gap-2" onClick={logout}>
               <LogOut className="w-4 h-4" />
-              Login
+              Sign Out
             </Button>
-          </Link>
+          ) : (
+            <Link href="/login">
+              <Button variant="outline" size="sm" className="gap-2">
+                <LogOut className="w-4 h-4" />
+                Login
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 

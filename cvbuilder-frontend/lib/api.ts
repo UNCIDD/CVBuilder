@@ -37,7 +37,6 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const token = getAuthToken();
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
-
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...options.headers,
