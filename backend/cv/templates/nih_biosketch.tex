@@ -1,37 +1,68 @@
-\documentclass[11pt]{article}
+\documentclass[12pt]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{array}
+\usepackage{tabularx}
 
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{8pt}
+\setlength{\parskip}{0pt}
+\singlespacing
 \sloppy
 \emergencystretch=3em
 
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\raggedbottom
+
 \begin{document}
 
-\section*{Personal Summary}
-{{SUMMARY}}
+\begin{center}
+\Large\textbf{Biographical Sketch - {{ first_name }}{% if middle_initial %} {{ middle_initial }}.{% endif %} {{ last_name }}{% if title %}, {{ title }}{% endif %}}
+\end{center}
 
 \vspace{12pt}
 
-\section*{Professional Preparation}
-{{EDUCATION}}
+{{ summary }}
 
-\vspace{12pt}
+\vspace{6pt}
 
-\section*{Appointments}
-{{APPOINTMENTS}}
+\textbf{Professional Preparation}
 
-\vspace{12pt}
+\noindent\begin{tabularx}{\textwidth}{@{}YYYY@{}}
+{% for edu in educations %}
+{{ edu.school_name }} & {{ edu.field_of_study }} & {{ edu.degree_type }} & {{ edu.grad_year }} \\
+{% endfor %}
+\end{tabularx}
 
-\section*{Five most closely related to current research}
+\vspace{6pt}
 
-{{RELATED_PUBLICATIONS}}
+\textbf{Appointments}
 
-\vspace{12pt}
+\noindent\begin{tabularx}{\textwidth}{@{}YYY@{}}
+{% for exp in experiences %}
+{{ exp.title }} & {{ exp.institution }} & {{ exp.years }} \\
+{% endfor %}
+\end{tabularx}
 
-\section*{Five other significant publications}
+\vspace{6pt}
 
-{{OTHER_PUBLICATIONS}}
+\textbf{Example Publications}
+
+\textbf{Five most closely related to current research}
+
+{% for pub in related_publications %}
+{{ loop.index }}. {{ pub.citation }}
+
+{% endfor %}
+
+\vspace{6pt}
+
+\textbf{Five other significant publications}
+
+{% for pub in other_publications %}
+{{ loop.index }}. {{ pub.citation }}
+
+{% endfor %}
 
 \end{document}

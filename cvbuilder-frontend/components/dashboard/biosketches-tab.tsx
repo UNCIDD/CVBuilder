@@ -83,6 +83,11 @@ export function BiosketchesTab() {
       const body: any = {
         related_publication_ids: params.get('related_publication_ids')?.split(',').map(id => parseInt(id)).filter(id => !isNaN(id)) || [],
         other_publication_ids: params.get('other_publication_ids')?.split(',').map(id => parseInt(id)).filter(id => !isNaN(id)) || [],
+        format: 'pdf', // Default to PDF for dashboard downloads
+        first_name: params.get('first_name') || '',
+        middle_initial: params.get('middle_initial') || '',
+        last_name: params.get('last_name') || '',
+        title: params.get('title') || '',
       }
 
       const personalStatementId = params.get('personal_statement_id')
