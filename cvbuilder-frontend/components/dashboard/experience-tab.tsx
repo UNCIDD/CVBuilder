@@ -49,27 +49,44 @@ export function ExperienceTab() {
     e.institution.toLowerCase().includes(search.toLowerCase())
   )
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (newEntry.title.trim() && newEntry.institution.trim()) {
-      setExperience([
-        ...experience,
-        {
-          id: Math.max(...experience.map((e) => e.id), 0) + 1,
-          ...newEntry,
-        },
-      ])
-      setNewEntry({
-        title: "",
-        institution: "",
-        startYear: new Date().getFullYear(),
-        endYear: null,
-      })
-      setOpenAdd(false)
+      try {
+        const data = {
+          title: newEntry.title,
+          institution: newEntry.institution,
+          start_year: newEntry.startYear,
+          end_year: newEntry.endYear,
+        }
+        await apiRequest('/api/cv/professional-experience/', {
+          method: 'POST',
+          body: JSON.stringify(data),
+        })
+        await fetchExperience()
+        setNewEntry({
+          title: "",
+          institution: "",
+          startYear: new Date().getFullYear(),
+          endYear: null,
+        })
+        setOpenAdd(false)
+      } catch (err) {
+        console.error('Failed to add experience:', err)
+        alert('Failed to add experience. Please try again.')
+      }
     }
   }
 
-  const handleDelete = (id: number) => {
-    setExperience(experience.filter((e) => e.id !== id))
+  const handleDelete = async (id: number) => {
+    try {
+      await apiRequest(`/api/cv/professional-experience/${id}/`, {
+        method: 'DELETE',
+      })
+      await fetchExperience()
+    } catch (err) {
+      console.error('Failed to delete experience:', err)
+      alert('Failed to delete experience. Please try again.')
+    }
   }
 
   return (
