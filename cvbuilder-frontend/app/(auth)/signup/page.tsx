@@ -4,13 +4,12 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { register } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 
 export default function SignupPage() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,6 +20,11 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!username.trim()) {
+      setError('Username is required');
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
@@ -35,9 +39,9 @@ export default function SignupPage() {
     setIsLoading(true);
     
     try {
-      await register(email, password);
+      await register(username.trim(), password);
       await refreshAuth();
-      router.push('/');
+      router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
@@ -48,14 +52,11 @@ export default function SignupPage() {
   return (
     <main className="min-h-screen bg-background">
       {/* Navigation */}
-      <Link href="/">
-        <div className="border-b border-border/40 bg-card cursor-pointer hover:bg-secondary/50 transition-colors">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-2">
-            <ArrowLeft className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Back to Home</span>
-          </div>
+      <div className="border-b border-border/40 bg-card">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <h1 className="text-xl font-bold text-foreground">Biosketch</h1>
         </div>
-      </Link>
+      </div>
 
       {/* Signup Form */}
       <div className="flex items-center justify-center min-h-[calc(100vh-65px)]">
@@ -73,12 +74,12 @@ export default function SignupPage() {
             )}
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-foreground">Email</label>
+              <label className="block text-sm font-medium text-foreground">Username</label>
               <Input
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                placeholder="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
                 className="h-10"
               />

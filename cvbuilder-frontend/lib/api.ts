@@ -37,9 +37,9 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const token = getAuthToken();
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string> || {}),
   };
 
   if (token) {
@@ -95,12 +95,12 @@ export async function login(username: string, password: string): Promise<{ token
 /**
  * Register a new user and get auth token
  */
-export async function register(email: string, password: string): Promise<{ token: string; user_id: number }> {
+export async function register(username: string, password: string): Promise<{ token: string; user_id: number }> {
   const response = await apiRequest<{ token: string; user_id: number }>(
     '/api/accounts/register/',
     {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     }
   );
 

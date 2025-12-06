@@ -38,14 +38,9 @@ export default function DashboardPage() {
       <div className="border-b border-border/40 bg-card">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold text-foreground">Biosketch</h1>
-          <div className="flex items-center gap-4">
-            <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Home
-            </Link>
-            <Button variant="ghost" size="sm" onClick={logout}>
-              Sign Out
-            </Button>
-          </div>
+          <Button variant="ghost" size="sm" onClick={logout}>
+            Sign Out
+          </Button>
         </div>
       </div>
 

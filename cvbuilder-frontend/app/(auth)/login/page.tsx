@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { login } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
@@ -26,11 +25,11 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    
+
     try {
       await login(username, password);
       await refreshAuth();
-      router.push('/');
+      router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
     } finally {
@@ -41,14 +40,11 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-background">
       {/* Navigation */}
-      <Link href="/">
-        <div className="border-b border-border/40 bg-card cursor-pointer hover:bg-secondary/50 transition-colors">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-2">
-            <ArrowLeft className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Back to Home</span>
-          </div>
+      <div className="border-b border-border/40 bg-card">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <h1 className="text-xl font-bold text-foreground">Biosketch</h1>
         </div>
-      </Link>
+      </div>
 
       {/* Login Form */}
       <div className="flex items-center justify-center min-h-[calc(100vh-65px)]">
@@ -105,22 +101,6 @@ export default function LoginPage() {
                 Sign up
               </Link>
             </p>
-          </div>
-
-          <div className="mt-8 pt-8 border-t border-border/40">
-            <p className="text-xs text-muted-foreground text-center mb-4">After login, you can:</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Link href="/dashboard">
-                <Button variant="outline" className="w-full" size="sm">
-                  View Dashboard
-                </Button>
-              </Link>
-              <Link href="/biosketch/new">
-                <Button variant="outline" className="w-full" size="sm">
-                  Create Biosketch
-                </Button>
-              </Link>
-            </div>
           </div>
         </div>
       </div>
