@@ -42,9 +42,6 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "accounts",
     "cv",
-    "templates_engine",
-    "importers",
-    "exports",
 ]
 
 MIDDLEWARE = [
