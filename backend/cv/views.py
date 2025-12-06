@@ -7,12 +7,14 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.http import HttpResponse
-from .models import Education, ProfessionalExperience, Publication, Award
+from .models import Education, ProfessionalExperience, Publication, Award, PersonalStatement, Biosketch
 from .serializers import (
     EducationSerializer,
     ProfessionalExperienceSerializer,
     PublicationSerializer,
     AwardSerializer,
+    PersonalStatementSerializer,
+    BiosketchSerializer,
     BiosketchRequestSerializer
 )
 
@@ -144,6 +146,28 @@ class AwardViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
+class PersonalStatementViewSet(viewsets.ModelViewSet):
+    serializer_class = PersonalStatementSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return PersonalStatement.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class BiosketchViewSet(viewsets.ModelViewSet):
+    serializer_class = BiosketchSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Biosketch.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
 def escape_latex(text):
     """Escape special LaTeX characters"""
     if not text:
@@ -175,7 +199,23 @@ def generate_biosketch(request):
 
     related_ids = serializer.validated_data['related_publication_ids']
     other_ids = serializer.validated_data['other_publication_ids']
-    summary = serializer.validated_data['summary']
+    
+    # Get summary from personal statement if ID provided, otherwise use summary field
+    personal_statement_id = serializer.validated_data.get('personal_statement_id')
+    if personal_statement_id:
+        try:
+            personal_statement = PersonalStatement.objects.get(
+                id=personal_statement_id,
+                user=request.user
+            )
+            summary = personal_statement.content
+        except PersonalStatement.DoesNotExist:
+            return Response(
+                {"error": "Personal statement not found or does not belong to you"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    else:
+        summary = serializer.validated_data.get('summary', '')
 
     related_queryset = Publication.objects.filter(
         id__in=related_ids,
