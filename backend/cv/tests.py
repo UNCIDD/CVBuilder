@@ -927,7 +927,9 @@ class BiosketchEndpointTest(TestCase):
         data = {
             'related_publication_ids': [p.id for p in self.related_pubs],
             'other_publication_ids': [p.id for p in self.other_pubs],
-            'summary': 'Test biographical summary'
+            'summary': 'Test biographical summary',
+            'first_name': 'Test',
+            'last_name': 'User'
         }
         
         # Use a simpler approach - just verify the endpoint structure
@@ -952,7 +954,9 @@ class BiosketchEndpointTest(TestCase):
         data = {
             'related_publication_ids': [999, 998, 997, 996, 995],  # Non-existent IDs
             'other_publication_ids': [p.id for p in self.other_pubs],
-            'summary': 'Test summary'
+            'summary': 'Test summary',
+            'first_name': 'Test',
+            'last_name': 'User'
         }
         response = self.client.post(url, data, format='json')
         
@@ -965,7 +969,9 @@ class BiosketchEndpointTest(TestCase):
         data = {
             'related_publication_ids': [p.id for p in self.related_pubs],
             'other_publication_ids': [999, 998, 997, 996, 995],  # Non-existent IDs
-            'summary': 'Test summary'
+            'summary': 'Test summary',
+            'first_name': 'Test',
+            'last_name': 'User'
         }
         response = self.client.post(url, data, format='json')
         
@@ -978,7 +984,9 @@ class BiosketchEndpointTest(TestCase):
         data = {
             'related_publication_ids': [self.related_pubs[0].id],  # Only 1 instead of 5
             'other_publication_ids': [p.id for p in self.other_pubs],
-            'summary': 'Test summary'
+            'summary': 'Test summary',
+            'first_name': 'Test',
+            'last_name': 'User'
         }
         response = self.client.post(url, data, format='json')
         
@@ -989,7 +997,9 @@ class BiosketchEndpointTest(TestCase):
         url = reverse('generate-biosketch')
         data = {
             'related_publication_ids': [p.id for p in self.related_pubs],
-            'other_publication_ids': [p.id for p in self.other_pubs]
+            'other_publication_ids': [p.id for p in self.other_pubs],
+            'first_name': 'Test',
+            'last_name': 'User'
         }
         response = self.client.post(url, data, format='json')
         
@@ -1003,7 +1013,9 @@ class BiosketchEndpointTest(TestCase):
         data = {
             'related_publication_ids': [p.id for p in self.related_pubs],
             'other_publication_ids': [p.id for p in self.other_pubs],
-            'summary': 'Test summary'
+            'summary': 'Test summary',
+            'first_name': 'Test',
+            'last_name': 'User'
         }
         response = self.client.post(url, data, format='json')
         
@@ -1028,7 +1040,9 @@ class BiosketchEndpointTest(TestCase):
             'related_publication_ids': [self.related_pubs[0].id, self.related_pubs[1].id, 
                                       self.related_pubs[2].id, self.related_pubs[3].id, other_pub.id],
             'other_publication_ids': [p.id for p in self.other_pubs],
-            'summary': 'Test summary'
+            'summary': 'Test summary',
+            'first_name': 'Test',
+            'last_name': 'User'
         }
         response = self.client.post(url, data, format='json')
         
@@ -1045,7 +1059,9 @@ class BiosketchEndpointTest(TestCase):
         data = {
             'related_publication_ids': ordered_ids,
             'other_publication_ids': [p.id for p in self.other_pubs],
-            'summary': 'Test summary'
+            'summary': 'Test summary',
+            'first_name': 'Test',
+            'last_name': 'User'
         }
         
         # We can't easily test PDF content, but we can verify the endpoint accepts the order
