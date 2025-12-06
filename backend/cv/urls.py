@@ -5,6 +5,8 @@ from .views import (
     ProfessionalExperienceViewSet,
     PublicationViewSet,
     AwardViewSet,
+    PersonalStatementViewSet,
+    BiosketchViewSet,
     generate_biosketch
 )
 
@@ -13,6 +15,8 @@ router.register(r'education', EducationViewSet, basename='education')
 router.register(r'professional-experience', ProfessionalExperienceViewSet, basename='professional-experience')
 router.register(r'publications', PublicationViewSet, basename='publication')
 router.register(r'awards', AwardViewSet, basename='award')
+router.register(r'personal-statements', PersonalStatementViewSet, basename='personal-statement')
+router.register(r'biosketches', BiosketchViewSet, basename='biosketch')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Education, ProfessionalExperience, Publication, Award
+from .models import Education, ProfessionalExperience, Publication, Award, PersonalStatement, Biosketch
 
 
 @admin.register(Education)
@@ -32,3 +32,21 @@ class AwardAdmin(admin.ModelAdmin):
     list_filter = ('user', 'year',)
     search_fields = ('user__username', 'name',)
     raw_id_fields = ('user',)
+
+
+@admin.register(PersonalStatement)
+class PersonalStatementAdmin(admin.ModelAdmin):
+    list_display = ('user', 'title', 'created_at', 'updated_at')
+    list_filter = ('user', 'created_at', 'updated_at')
+    search_fields = ('user__username', 'title', 'content')
+    raw_id_fields = ('user',)
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(Biosketch)
+class BiosketchAdmin(admin.ModelAdmin):
+    list_display = ('user', 'title', 'url', 'created_at')
+    list_filter = ('user', 'created_at')
+    search_fields = ('user__username', 'title', 'url')
+    raw_id_fields = ('user',)
+    readonly_fields = ('created_at',)

@@ -1,11 +1,11 @@
 'use client';
 
-import { BiosketechGenerator } from '@/components/biosketch-generator';
+import { BiosketchForm } from '@/components/biosketch-form';
 
 export default function BiosketechPage() {
   return (
     <main className="min-h-screen bg-background">
-      <BiosketechGenerator />
+      <BiosketchForm />
     </main>
   );
 }

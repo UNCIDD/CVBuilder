@@ -66,3 +66,31 @@ class Award(models.Model):
 
     class Meta:
         ordering = ['-year']
+
+
+class PersonalStatement(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='personal_statements')
+    title = models.CharField(max_length=200, help_text="A name/title for this personal statement")
+    content = models.TextField(help_text="The personal statement text")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.user.username})"
+
+    class Meta:
+        ordering = ['-updated_at']
+
+
+class Biosketch(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='biosketches')
+    title = models.CharField(max_length=200, help_text="Title for this biosketch")
+    url = models.TextField(help_text="URL with parameters that encode the biosketch configuration")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.user.username})"
+
+    class Meta:
+        ordering = ['-updated_at']
