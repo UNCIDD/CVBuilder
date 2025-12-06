@@ -74,6 +74,25 @@ class BiosketchRequestSerializer(serializers.Serializer):
         allow_blank=True,
         help_text="Personal summary/biographical statement (used if personal_statement_id not provided)"
     )
+    first_name = serializers.CharField(
+        required=True,
+        help_text="First name for the biosketch title"
+    )
+    middle_initial = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=1,
+        help_text="Middle initial (optional)"
+    )
+    last_name = serializers.CharField(
+        required=True,
+        help_text="Last name for the biosketch title"
+    )
+    title = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Title/degree (e.g., PhD, MD, etc.)"
+    )
 
     def validate(self, data):
         if not data.get('personal_statement_id') and not data.get('summary'):

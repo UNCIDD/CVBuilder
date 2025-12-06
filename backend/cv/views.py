@@ -2,6 +2,7 @@ import subprocess
 import tempfile
 import requests
 from pathlib import Path
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -169,25 +170,136 @@ class BiosketchViewSet(viewsets.ModelViewSet):
 
 
 def escape_latex(text):
-    """Escape special LaTeX characters"""
+    """Escape special LaTeX characters - only escape what's necessary in text mode"""
+    if text is None:
+        return ""
     if not text:
         return ""
-    replacements = {
-        '&': r'\&',
-        '%': r'\%',
-        '$': r'\$',
-        '#': r'\#',
-        '^': r'\^{}',
-        '_': r'\_',
-        '{': r'\{',
-        '}': r'\}',
-        '~': r'\textasciitilde{}',
-        '\\': r'\textbackslash{}',
-    }
+    import re
     result = str(text)
-    for char, replacement in replacements.items():
+    
+    # First, clean up any errant LaTeX escaping that might already be in the text
+    # Remove backslashes before apostrophes and common punctuation (these don't need escaping in text mode)
+    result = re.sub(r"\\(['`])", r'\1', result)  # Remove \' and \`
+    
+    # Handle curly/smart quotes - convert to straight quotes (apostrophes are fine in LaTeX)
+    result = result.replace(''', "'")
+    result = result.replace(''', "'")
+    result = result.replace('"', '"')
+    result = result.replace('"', '"')
+    
+    # IMPORTANT: Escape % first to prevent comment issues
+    # This must be done before any other processing to avoid comment-related errors
+    # Replace all % with \%, but avoid double-escaping
+    # First, temporarily mark already-escaped % characters
+    result = result.replace(r'\%', '___ESCAPED_PERCENT___')
+    # Now escape all remaining % characters
+    result = result.replace('%', r'\%')
+    # Restore the already-escaped ones
+    result = result.replace('___ESCAPED_PERCENT___', r'\%')
+    
+    # Escape special LaTeX characters that need escaping in text mode
+    # Note: apostrophes (') don't need escaping in text mode
+    replacements = [
+        ('&', r'\&'),
+        ('$', r'\$'),
+        ('#', r'\#'),
+        ('^', r'\^{}'),
+        ('_', r'\_'),
+        ('{', r'\{'),
+        ('}', r'\}'),
+        ('~', r'\textasciitilde{}'),
+    ]
+    
+    for char, replacement in replacements:
         result = result.replace(char, replacement)
+    
+    # Escape backslashes last - but only standalone backslashes not part of LaTeX commands
+    # This regex matches a backslash not followed by a letter, {, or one of our escape sequences
+    # Updated to properly handle already-escaped sequences
+    result = re.sub(r'\\(?![a-zA-Z{}\\&%$#^_~])', r'\\textbackslash{}', result)
+    
     return result
+
+
+def get_template_env():
+    """Get Jinja2 template environment"""
+    template_dir = Path(__file__).parent / 'templates'
+    env = Environment(
+        loader=FileSystemLoader(str(template_dir)),
+        autoescape=select_autoescape(['html', 'xml']),
+        trim_blocks=True,
+        lstrip_blocks=True
+    )
+    # Add LaTeX escape filter
+    env.filters['latex'] = escape_latex
+    return env
+
+
+def prepare_template_data(related_publications, other_publications, educations, experiences, summary, first_name, middle_initial, last_name, title):
+    """Prepare data structure for template rendering"""
+    # Prepare education data
+    edu_data = []
+    for edu in educations:
+        grad_year_str = str(edu.grad_year) if edu.grad_year is not None else ''
+        edu_data.append({
+            'school_name': escape_latex(edu.school_name),
+            'location': escape_latex(edu.location),
+            'field_of_study': escape_latex(edu.field_of_study),
+            'degree_type': escape_latex(edu.degree_type),
+            'grad_year': escape_latex(grad_year_str),
+        })
+
+    # Prepare experience data
+    exp_data = []
+    for exp in experiences:
+        start_year_str = str(exp.start_year) if exp.start_year is not None else ''
+        if exp.end_year:
+            years = f"{start_year_str} - {exp.end_year}"
+        else:
+            years = f"{start_year_str} - present"
+        exp_data.append({
+            'title': escape_latex(exp.title),
+            'institution': escape_latex(exp.institution),
+            'years': escape_latex(years),
+        })
+
+    # Prepare publication data
+    related_pub_data = []
+    for pub in related_publications:
+        if pub.citation:
+            citation = pub.citation
+        elif pub.doi:
+            citation = f"DOI: {pub.doi}"
+        else:
+            citation = ""
+        related_pub_data.append({
+            'citation': escape_latex(citation),
+        })
+
+    other_pub_data = []
+    for pub in other_publications:
+        if pub.citation:
+            citation = pub.citation
+        elif pub.doi:
+            citation = f"DOI: {pub.doi}"
+        else:
+            citation = ""
+        other_pub_data.append({
+            'citation': escape_latex(citation),
+        })
+
+    return {
+        'summary': escape_latex(summary),
+        'educations': edu_data,
+        'experiences': exp_data,
+        'related_publications': related_pub_data,
+        'other_publications': other_pub_data,
+        'first_name': escape_latex(first_name),
+        'middle_initial': escape_latex(middle_initial) if middle_initial else '',
+        'last_name': escape_latex(last_name),
+        'title': escape_latex(title) if title else '',
+    }
 
 
 @api_view(['POST'])
@@ -199,6 +311,7 @@ def generate_biosketch(request):
 
     related_ids = serializer.validated_data['related_publication_ids']
     other_ids = serializer.validated_data['other_publication_ids']
+    export_format = request.data.get('format', 'pdf').lower()  # pdf, latex, html
     
     # Get summary from personal statement if ID provided, otherwise use summary field
     personal_statement_id = serializer.validated_data.get('personal_statement_id')
@@ -246,20 +359,62 @@ def generate_biosketch(request):
     educations = Education.objects.filter(user=request.user).order_by('-grad_year')
     experiences = ProfessionalExperience.objects.filter(user=request.user).order_by('-start_year')
 
-    try:
-        pdf_content = generate_biosketch_pdf(
-            related_publications=list(related_publications),
-            other_publications=list(other_publications),
-            educations=list(educations),
-            experiences=list(experiences),
-            summary=summary,
-            user=request.user
-        )
+    # Get name and title fields
+    first_name = serializer.validated_data.get('first_name', '')
+    middle_initial = serializer.validated_data.get('middle_initial', '')
+    last_name = serializer.validated_data.get('last_name', '')
+    title = serializer.validated_data.get('title', '')
 
-        response = HttpResponse(pdf_content, content_type='application/pdf')
-        response['Content-Disposition'] = 'inline; filename="nih_biosketch.pdf"'
-        response['Content-Length'] = len(pdf_content)
-        return response
+    try:
+        if export_format == 'latex':
+            latex_content = generate_biosketch_latex(
+                related_publications=list(related_publications),
+                other_publications=list(other_publications),
+                educations=list(educations),
+                experiences=list(experiences),
+                summary=summary,
+                first_name=first_name,
+                middle_initial=middle_initial,
+                last_name=last_name,
+                title=title,
+            )
+            response = HttpResponse(latex_content, content_type='text/plain; charset=utf-8')
+            response['Content-Disposition'] = 'attachment; filename="biosketch.tex"'
+            return response
+        
+        elif export_format == 'html':
+            html_content = generate_biosketch_html(
+                related_publications=list(related_publications),
+                other_publications=list(other_publications),
+                educations=list(educations),
+                experiences=list(experiences),
+                summary=summary,
+                first_name=first_name,
+                middle_initial=middle_initial,
+                last_name=last_name,
+                title=title,
+            )
+            response = HttpResponse(html_content, content_type='text/html; charset=utf-8')
+            response['Content-Disposition'] = 'attachment; filename="biosketch.html"'
+            return response
+        
+        else:  # pdf (default)
+            pdf_content = generate_biosketch_pdf(
+                related_publications=list(related_publications),
+                other_publications=list(other_publications),
+                educations=list(educations),
+                experiences=list(experiences),
+                summary=summary,
+                first_name=first_name,
+                middle_initial=middle_initial,
+                last_name=last_name,
+                title=title,
+            )
+            response = HttpResponse(pdf_content, content_type='application/pdf')
+            response['Content-Disposition'] = 'inline; filename="nih_biosketch.pdf"'
+            response['Content-Length'] = len(pdf_content)
+            return response
+
     except subprocess.CalledProcessError as e:
         return Response(
             {"error": f"PDF generation failed: {str(e)}. Make sure pdflatex is installed."},
@@ -274,55 +429,68 @@ def generate_biosketch(request):
         error_details = str(e)
         return Response(
             {
-                "error": f"Error generating PDF: {error_details}",
+                "error": f"Error generating biosketch: {error_details}",
                 "hint": "Check that pdflatex is installed and the LaTeX template is valid."
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
 
-def generate_biosketch_pdf(related_publications, other_publications, educations, experiences, summary, user):
-    template_path = Path(__file__).parent / 'templates' / 'nih_biosketch.tex'
-    with open(template_path, 'r', encoding='utf-8') as f:
-        template = f.read()
+def generate_biosketch_latex(related_publications, other_publications, educations, experiences, summary, first_name, middle_initial, last_name, title):
+    """Generate raw LaTeX content from template"""
+    env = get_template_env()
+    template = env.get_template('nih_biosketch.tex')
+    data = prepare_template_data(related_publications, other_publications, educations, experiences, summary, first_name, middle_initial, last_name, title)
+    return template.render(**data)
 
-    summary_escaped = escape_latex(summary)
-    template = template.replace('{{SUMMARY}}', summary_escaped)
 
-    education_text = ""
-    for edu in educations:
-        school = escape_latex(edu.school_name)
-        location = escape_latex(edu.location)
-        field = escape_latex(edu.field_of_study)
-        degree = escape_latex(edu.degree_type)
-        year = str(edu.grad_year)
-        education_text += f"{school} \\quad {location} \\quad {field} \\quad {degree} \\quad {year}\n\n"
-    template = template.replace('{{EDUCATION}}', education_text)
+def generate_biosketch_html(related_publications, other_publications, educations, experiences, summary, first_name, middle_initial, last_name, title):
+    """Generate HTML content by converting LaTeX to HTML using pandoc"""
+    # First generate the LaTeX content
+    latex_content = generate_biosketch_latex(
+        related_publications, other_publications, educations, experiences, summary, first_name, middle_initial, last_name, title
+    )
 
-    appointments_text = ""
-    for exp in experiences:
-        title = escape_latex(exp.title)
-        institution = escape_latex(exp.institution)
-        if exp.end_year:
-            years = f"{exp.start_year} - {exp.end_year}"
-        else:
-            years = f"{exp.start_year} - present"
-        appointments_text += f"{title} \\quad {institution} \\quad {years}\n\n"
-    template = template.replace('{{APPOINTMENTS}}', appointments_text)
+    # Convert LaTeX to HTML using pandoc
+    with tempfile.TemporaryDirectory() as temp_dir:
+        tex_file = Path(temp_dir) / 'biosketch.tex'
+        html_file = Path(temp_dir) / 'biosketch.html'
 
-    related_publications_text = ""
-    for i, pub in enumerate(related_publications, 1):
-        citation = pub.citation if pub.citation else f"DOI: {pub.doi}"
-        citation_escaped = escape_latex(citation)
-        related_publications_text += f"{i}. {citation_escaped}\n\n"
-    template = template.replace('{{RELATED_PUBLICATIONS}}', related_publications_text)
+        # Write LaTeX content
+        with open(tex_file, 'w', encoding='utf-8') as f:
+            f.write(latex_content)
 
-    other_publications_text = ""
-    for i, pub in enumerate(other_publications, 1):
-        citation = pub.citation if pub.citation else f"DOI: {pub.doi}"
-        citation_escaped = escape_latex(citation)
-        other_publications_text += f"{i}. {citation_escaped}\n\n"
-    latex_content = template.replace('{{OTHER_PUBLICATIONS}}', other_publications_text)
+        # Convert using pandoc
+        try:
+            result = subprocess.run(
+                ['pandoc', str(tex_file), '-f', 'latex', '-t', 'html', '-o', str(html_file)],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+        except FileNotFoundError:
+            raise Exception(
+                "pandoc not found. Please install pandoc to export HTML. "
+                "Visit https://pandoc.org/installing.html for installation instructions."
+            )
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"HTML conversion failed: {e.stderr}")
+
+        if not html_file.exists():
+            raise Exception("HTML file was not generated")
+
+        # Read and return HTML content
+        with open(html_file, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+
+        return html_content
+
+
+def generate_biosketch_pdf(related_publications, other_publications, educations, experiences, summary, first_name, middle_initial, last_name, title):
+    """Generate PDF from LaTeX template"""
+    latex_content = generate_biosketch_latex(
+        related_publications, other_publications, educations, experiences, summary, first_name, middle_initial, last_name, title
+    )
 
     with tempfile.TemporaryDirectory() as temp_dir:
         tex_file = Path(temp_dir) / 'biosketch.tex'
@@ -348,8 +516,7 @@ def generate_biosketch_pdf(related_publications, other_publications, educations,
             error_output = result1.stdout + result1.stderr if result1.stdout or result1.stderr else "No output"
             if result2.stdout or result2.stderr:
                 error_output += "\n\nSecond run:\n" + result2.stdout + result2.stderr
-            error_msg = f"PDF generation failed. LaTeX output:\n{error_output}"
-            raise Exception(error_msg)
+            raise Exception(f"PDF generation failed: {error_output}")
 
         with open(pdf_file, 'rb') as f:
             pdf_content = f.read()

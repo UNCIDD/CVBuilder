@@ -56,6 +56,10 @@ export function BiosketchForm() {
   const router = useRouter();
   
   // Form state
+  const [firstName, setFirstName] = useState('');
+  const [middleInitial, setMiddleInitial] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [title, setTitle] = useState('');
   const [personalStatementId, setPersonalStatementId] = useState<number | null>(null);
   const [customStatement, setCustomStatement] = useState('');
   const [useCustomStatement, setUseCustomStatement] = useState(false);
@@ -79,6 +83,7 @@ export function BiosketchForm() {
   const [pubSearchQuery, setPubSearchQuery] = useState('');
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveTitle, setSaveTitle] = useState('');
+  const [exportFormat, setExportFormat] = useState<'pdf' | 'latex' | 'html'>('pdf');
 
   // Load data from URL params or biosketch ID on mount
   useEffect(() => {
@@ -105,6 +110,23 @@ export function BiosketchForm() {
       const relatedIds = searchParams.get('related_publication_ids');
       const otherIds = searchParams.get('other_publication_ids');
       const customPs = searchParams.get('custom_statement');
+      const fn = searchParams.get('first_name');
+      const mi = searchParams.get('middle_initial');
+      const ln = searchParams.get('last_name');
+      const t = searchParams.get('title');
+
+      if (fn) {
+        setFirstName(fn);
+      }
+      if (mi) {
+        setMiddleInitial(mi);
+      }
+      if (ln) {
+        setLastName(ln);
+      }
+      if (t) {
+        setTitle(t);
+      }
 
       if (psId) {
         setPersonalStatementId(parseInt(psId));
@@ -170,6 +192,19 @@ export function BiosketchForm() {
 
   const buildUrl = () => {
     const params = new URLSearchParams();
+    
+    if (firstName.trim()) {
+      params.set('first_name', firstName.trim());
+    }
+    if (middleInitial.trim()) {
+      params.set('middle_initial', middleInitial.trim());
+    }
+    if (lastName.trim()) {
+      params.set('last_name', lastName.trim());
+    }
+    if (title.trim()) {
+      params.set('title', title.trim());
+    }
     
     if (useCustomStatement && customStatement) {
       params.set('custom_statement', encodeURIComponent(customStatement));
@@ -245,7 +280,18 @@ export function BiosketchForm() {
       const body: any = {
         related_publication_ids: relatedPublications,
         other_publication_ids: otherPublications,
+        format: exportFormat,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
       };
+
+      if (middleInitial.trim()) {
+        body.middle_initial = middleInitial.trim().charAt(0).toUpperCase();
+      }
+
+      if (title.trim()) {
+        body.title = title.trim();
+      }
 
       if (useCustomStatement) {
         body.summary = customStatement;
@@ -266,12 +312,25 @@ export function BiosketchForm() {
         throw new Error(errorData.error || 'Failed to generate biosketch');
       }
 
-      // Download the PDF
+      // Download the file with appropriate extension
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'nih_biosketch.pdf';
+      
+      let filename = 'biosketch';
+      let contentType = 'application/pdf';
+      if (exportFormat === 'latex') {
+        filename = 'biosketch.tex';
+        contentType = 'text/plain';
+      } else if (exportFormat === 'html') {
+        filename = 'biosketch.html';
+        contentType = 'text/html';
+      } else {
+        filename = 'nih_biosketch.pdf';
+      }
+      
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -307,8 +366,10 @@ export function BiosketchForm() {
   });
 
   const isFormValid = 
-    (useCustomStatement && customStatement.trim().length > 0) || 
-    (!useCustomStatement && personalStatementId !== null) &&
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    ((useCustomStatement && customStatement.trim().length > 0) || 
+    (!useCustomStatement && personalStatementId !== null)) &&
     relatedPublications.length === 5 &&
     otherPublications.length === 5;
 
@@ -360,6 +421,59 @@ export function BiosketchForm() {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
+
+        {/* Name and Title Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Name and Title</CardTitle>
+            <CardDescription>
+              Enter your name and title for the biosketch header
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="first-name">First Name *</Label>
+                <Input
+                  id="first-name"
+                  placeholder="John"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="middle-initial">Middle Initial</Label>
+                <Input
+                  id="middle-initial"
+                  placeholder="A"
+                  value={middleInitial}
+                  onChange={(e) => setMiddleInitial(e.target.value.slice(0, 1))}
+                  maxLength={1}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="last-name">Last Name *</Label>
+                <Input
+                  id="last-name"
+                  placeholder="Doe"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="title">Title/Degree</Label>
+              <Input
+                id="title"
+                placeholder="PhD, MD, etc."
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Personal Statement Section */}
         <Card>
@@ -624,8 +738,22 @@ export function BiosketchForm() {
           </CardContent>
         </Card>
 
-        {/* Generate Button */}
-        <div className="flex justify-end">
+        {/* Generate Section */}
+        <div className="flex items-center justify-end gap-4">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="export-format">Export Format:</Label>
+            <select
+              id="export-format"
+              value={exportFormat}
+              onChange={(e) => setExportFormat(e.target.value as 'pdf' | 'latex' | 'html')}
+              className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isGenerating}
+            >
+              <option value="pdf">PDF</option>
+              <option value="latex">LaTeX</option>
+              <option value="html">HTML</option>
+            </select>
+          </div>
           <Button
             onClick={handleGenerate}
             disabled={!isFormValid || isGenerating}
@@ -638,7 +766,7 @@ export function BiosketchForm() {
                 Generating...
               </>
             ) : (
-              'Generate Biosketch PDF'
+              `Generate ${exportFormat.toUpperCase()}`
             )}
           </Button>
         </div>
