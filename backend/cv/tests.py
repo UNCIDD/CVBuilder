@@ -1049,11 +1049,49 @@ class BiosketchEndpointTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('error', response.data)
 
-    def test_generate_biosketch_preserves_publication_order(self):
+    @mock.patch('cv.views.subprocess.run')
+    @mock.patch('cv.views.Path')
+    @mock.patch('builtins.open', create=True)
+    def test_generate_biosketch_preserves_publication_order(self, mock_open, mock_path, mock_subprocess):
         """Test that publications appear in the order specified"""
+        import tempfile
+        from pathlib import Path as RealPath
+        
         # Create publications in specific order
         ordered_ids = [self.related_pubs[4].id, self.related_pubs[3].id, 
                       self.related_pubs[2].id, self.related_pubs[1].id, self.related_pubs[0].id]
+        
+        # Create a real temp directory
+        temp_dir = tempfile.mkdtemp()
+        pdf_path = RealPath(temp_dir) / 'biosketch.pdf'
+        pdf_path.write_bytes(b'fake pdf content')
+        
+        # Mock Path for template loading
+        mock_template_path = mock.MagicMock()
+        mock_template_path.read_text.return_value = 'template {{SUMMARY}} {{EDUCATION}} {{APPOINTMENTS}} {{RELATED_PUBLICATIONS}} {{OTHER_PUBLICATIONS}}'
+        mock_template_path.parent.__truediv__.return_value = mock_template_path
+        
+        # Mock Path for temp directory
+        def path_side_effect(*args):
+            if args and 'templates' in str(args[0]):
+                return mock_template_path
+            return RealPath(temp_dir)
+        
+        mock_path.side_effect = path_side_effect
+        mock_path.return_value.__truediv__ = lambda self, other: RealPath(temp_dir) / other
+        
+        # Mock subprocess
+        mock_result = mock.MagicMock()
+        mock_result.stdout = ''
+        mock_result.stderr = ''
+        mock_subprocess.return_value = mock_result
+        
+        # Mock file operations
+        mock_open.side_effect = [
+            mock.mock_open(read_data='template').return_value,  # Template read
+            mock.mock_open(read_data='').return_value,  # LaTeX write
+            mock.mock_open(read_data=b'fake pdf content').return_value,  # PDF read
+        ]
         
         url = reverse('generate-biosketch')
         data = {
@@ -1066,17 +1104,8 @@ class BiosketchEndpointTest(TestCase):
         
         # We can't easily test PDF content, but we can verify the endpoint accepts the order
         # In a real scenario, you'd parse the PDF or check the LaTeX content
-        with mock.patch('cv.views.subprocess.run') as mock_subprocess, \
-             mock.patch('cv.views.Path') as mock_path, \
-             mock.patch('builtins.open', mock.mock_open(read_data='test')):
-            mock_pdf_file = mock.MagicMock()
-            mock_pdf_file.exists.return_value = True
-            mock_path.return_value.__truediv__.return_value = mock_pdf_file
-            mock_subprocess.return_value.stdout = ''
-            mock_subprocess.return_value.stderr = ''
-            
-            response = self.client.post(url, data, format='json')
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
 class FetchDOIMetadataTest(TestCase):
