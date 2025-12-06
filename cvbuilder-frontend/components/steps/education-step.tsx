@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { apiRequest } from '@/lib/api';
 
 interface Education {
   id: number;
@@ -36,15 +37,26 @@ export function EducationStep({ selectedEducation, onSelectionChange }: Educatio
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetch('/api/cv/educations/');
-      if (!response.ok) throw new Error('Failed to fetch educations');
-      const data = await response.json();
+      const data = await apiRequest<Education[]>('/api/cv/education/');
       setEducations(data);
       // Select all by default
-      onSelectionChange(data.map((e: Education) => e.id));
+      if (data.length > 0) {
+        onSelectionChange(data.map((e: Education) => e.id));
+      }
     } catch (err) {
-      setError('Failed to load education data. Please try again.');
-      console.error(err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load education data. Please try again.';
+      setError(errorMessage);
+      console.error('Error fetching education:', err);
+      
+      // If it's an auth error, suggest logging in
+      if (errorMessage.includes('Unauthorized') || errorMessage.includes('401')) {
+        setError('Please log in to view your data. Redirecting to login...');
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+        }, 2000);
+      }
     } finally {
       setIsLoading(false);
     }

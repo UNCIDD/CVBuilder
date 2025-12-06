@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { apiRequest } from '@/lib/api';
 
 interface Publication {
   id: number;
@@ -33,12 +34,10 @@ export function PublicationsSection({ selectedPublications, onSelectionChange }:
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetch('/api/cv/publications/');
-      if (!response.ok) throw new Error('Failed to fetch publications');
-      const data = await response.json();
+      const data = await apiRequest<Publication[]>('/api/cv/publications/');
       setPublications(data);
     } catch (err) {
-      setError('Failed to load publications. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to load publications. Please try again.');
       console.error(err);
     } finally {
       setIsLoading(false);

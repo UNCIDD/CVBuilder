@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { getAuthToken } from '@/lib/api';
 
 interface GenerateBiosketechSectionProps {
   personalStatement: string;
@@ -31,11 +32,20 @@ export function GenerateBiosketechSection({
 
     try {
       onGenerating(true);
-      const response = await fetch('/api/cv/biosketch/', {
+      const token = getAuthToken();
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+
+      if (token) {
+        headers['Authorization'] = `Token ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/cv/biosketch/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           publication_ids: selectedPublications,
           summary: personalStatement,
@@ -43,7 +53,7 @@ export function GenerateBiosketechSection({
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({ error: 'Failed to generate biosketch' }));
         throw new Error(error.error || 'Failed to generate biosketch');
       }
 

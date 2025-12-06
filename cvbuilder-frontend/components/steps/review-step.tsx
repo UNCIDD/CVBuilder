@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
+import { getAuthToken } from '@/lib/api';
 
 interface ReviewStepProps {
   personalStatement: string;
@@ -32,22 +33,51 @@ export function ReviewStep({
       setError(null);
       onGenerating(true);
 
-      const allPublications = [...relatedPublications, ...otherPublications];
+      const token = getAuthToken();
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
-      const response = await fetch('/api/cv/biosketch/', {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+
+      if (token) {
+        headers['Authorization'] = `Token ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/cv/biosketch/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
-          publication_ids: allPublications,
+          related_publication_ids: relatedPublications,
+          other_publication_ids: otherPublications,
           summary: personalStatement,
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate biosketch');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to generate biosketch' }));
+        
+        // Show detailed validation errors if available
+        let errorMessage = 'Failed to generate biosketch';
+        if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.related_publication_ids) {
+          errorMessage = `Related publications: ${Array.isArray(errorData.related_publication_ids) ? errorData.related_publication_ids.join(', ') : errorData.related_publication_ids}`;
+        } else if (errorData.other_publication_ids) {
+          errorMessage = `Other publications: ${Array.isArray(errorData.other_publication_ids) ? errorData.other_publication_ids.join(', ') : errorData.other_publication_ids}`;
+        } else if (errorData.summary) {
+          errorMessage = `Summary: ${Array.isArray(errorData.summary) ? errorData.summary.join(', ') : errorData.summary}`;
+        } else if (typeof errorData === 'object') {
+          // Show all validation errors
+          const errors = Object.entries(errorData)
+            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+            .join('; ');
+          if (errors) {
+            errorMessage = errors;
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
 
       // Download the PDF

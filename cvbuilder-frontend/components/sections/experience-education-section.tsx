@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Spinner } from '@/components/ui/spinner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { apiRequest } from '@/lib/api';
 
 interface Education {
   id: number;
@@ -50,26 +51,35 @@ export function ExperienceEducationSection({
     try {
       setIsLoading(true);
       setError(null);
-      const [eduRes, expRes] = await Promise.all([
-        fetch('/api/cv/educations/'),
-        fetch('/api/cv/professional-experiences/')
-      ]);
-      if (!eduRes.ok || !expRes.ok) throw new Error('Failed to fetch data');
-      
       const [eduData, expData] = await Promise.all([
-        eduRes.json(),
-        expRes.json()
+        apiRequest<Education[]>('/api/cv/education/'),
+        apiRequest<ProfessionalExperience[]>('/api/cv/professional-experience/')
       ]);
       
       setEducations(eduData);
       setExperiences(expData);
       
       // Select all by default
-      onEducationChange(eduData.map((e: Education) => e.id));
-      onExperienceChange(expData.map((e: ProfessionalExperience) => e.id));
+      if (eduData.length > 0) {
+        onEducationChange(eduData.map((e: Education) => e.id));
+      }
+      if (expData.length > 0) {
+        onExperienceChange(expData.map((e: ProfessionalExperience) => e.id));
+      }
     } catch (err) {
-      setError('Failed to load education and experience data.');
-      console.error(err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load education and experience data.';
+      setError(errorMessage);
+      console.error('Error fetching education/experience:', err);
+      
+      // If it's an auth error, suggest logging in
+      if (errorMessage.includes('Unauthorized') || errorMessage.includes('401')) {
+        setError('Please log in to view your data. Redirecting to login...');
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+        }, 2000);
+      }
     } finally {
       setIsLoading(false);
     }

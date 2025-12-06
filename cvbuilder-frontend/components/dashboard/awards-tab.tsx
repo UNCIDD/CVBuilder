@@ -1,32 +1,22 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Trash2, Plus, Search } from 'lucide-react'
+import { apiRequest } from '@/lib/api'
 
-const dummyAwards = [
-  {
-    id: 1,
-    name: "NIH Early Independence Award",
-    year: 2020,
-  },
-  {
-    id: 2,
-    name: "NSF CAREER Award",
-    year: 2019,
-  },
-  {
-    id: 3,
-    name: "Searle Scholars Program",
-    year: 2018,
-  },
-]
+interface Award {
+  id: number;
+  name: string;
+  year: number;
+}
 
 export function AwardsTab() {
-  const [awards, setAwards] = useState(dummyAwards)
+  const [awards, setAwards] = useState<Award[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [openAdd, setOpenAdd] = useState(false)
   const [newEntry, setNewEntry] = useState({
@@ -34,29 +24,61 @@ export function AwardsTab() {
     year: new Date().getFullYear(),
   })
 
-  const filtered = awards.filter((a) =>
-    a.name.toLowerCase().includes(search.toLowerCase())
-  )
+  useEffect(() => {
+    fetchAwards()
+  }, [])
 
-  const handleAdd = () => {
-    if (newEntry.name.trim()) {
-      setAwards([
-        ...awards,
-        {
-          id: Math.max(...awards.map((a) => a.id), 0) + 1,
-          ...newEntry,
-        },
-      ])
+  const fetchAwards = async () => {
+    try {
+      setIsLoading(true)
+      const data = await apiRequest<Award[]>('/api/cv/awards/')
+      setAwards(data)
+    } catch (err) {
+      console.error('Failed to fetch awards:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const filtered = awards.filter((a) => {
+    if (!search) return true
+    const searchLower = search.toLowerCase()
+    return a.name?.toLowerCase().includes(searchLower) ?? false
+  })
+
+  const handleAdd = async () => {
+    if (!newEntry.name.trim()) return
+
+    try {
+      const data = {
+        name: newEntry.name.trim(),
+        year: newEntry.year,
+      }
+      await apiRequest('/api/cv/awards/', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+      await fetchAwards()
       setNewEntry({
         name: "",
         year: new Date().getFullYear(),
       })
       setOpenAdd(false)
+    } catch (err) {
+      console.error('Failed to add award:', err)
+      alert('Failed to add award. Please try again.')
     }
   }
 
-  const handleDelete = (id: number) => {
-    setAwards(awards.filter((a) => a.id !== id))
+  const handleDelete = async (id: number) => {
+    try {
+      await apiRequest(`/api/cv/awards/${id}/`, {
+        method: 'DELETE',
+      })
+      await fetchAwards()
+    } catch (err) {
+      console.error('Failed to delete award:', err)
+    }
   }
 
   return (
@@ -112,7 +134,11 @@ export function AwardsTab() {
         </Dialog>
       </div>
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="text-center py-12">
+          <p className="text-slate-500">Loading awards...</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-slate-500">No awards found</p>
         </div>

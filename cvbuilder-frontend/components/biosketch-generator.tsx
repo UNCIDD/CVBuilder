@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PersonalStatementStep } from './steps/personal-statement-step';
 import { EducationStep } from './steps/education-step';
@@ -8,6 +9,7 @@ import { ExperienceStep } from './steps/experience-step';
 import { PublicationsStep } from './steps/publications-step';
 import { ReviewStep } from './steps/review-step';
 import { StepIndicator } from './step-indicator';
+import { X } from 'lucide-react';
 
 type Step = 'statement' | 'education' | 'experience' | 'publications' | 'review';
 
@@ -69,8 +71,22 @@ export function BiosketechGenerator() {
       {/* Header */}
       <div className="border-b border-border/40 bg-background/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-3xl font-bold text-foreground">Biosketch Generator</h1>
-          <p className="text-muted-foreground mt-1">Create your professional biographical sketch in 5 easy steps</p>
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-foreground">Biosketch Generator</h1>
+              <p className="text-muted-foreground mt-1">Create your professional biographical sketch in 5 easy steps</p>
+            </div>
+            <Link href="/dashboard">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="ml-4"
+                aria-label="Close and return to dashboard"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
