@@ -2,6 +2,8 @@
 
 A web application for creating professional biographical sketches (biosketches) with publications, education, and experience.
 
+Note: at this point built verion seems to work, but some issues with the dev run.
+
 ## Quick Start
 
 ### Prerequisites
@@ -39,7 +41,7 @@ cd cvbuilder-frontend
 
 # Install dependencies
 npm install
-
+  
 # Start the development server
 npm run dev
 ```

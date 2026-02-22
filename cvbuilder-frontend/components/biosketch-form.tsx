@@ -309,7 +309,12 @@ export function BiosketchForm() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to generate biosketch' }));
-        throw new Error(errorData.error || 'Failed to generate biosketch');
+        // DRF validation errors use field names as keys (e.g. {related_publication_ids: [...]})
+        const message = errorData.error
+          || errorData.non_field_errors?.join(', ')
+          || Object.entries(errorData).map(([k, v]) => `${k}: ${(v as string[]).join(', ')}`).join('; ')
+          || 'Failed to generate biosketch';
+        throw new Error(message);
       }
 
       // Download the file with appropriate extension
